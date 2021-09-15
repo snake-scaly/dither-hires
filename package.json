@@ -1,0 +1,14 @@
+{
+  "name": "dither-hires",
+  "version": "1.0.0",
+  "description": "Image converter into Apple ][ HiRes format",
+  "main": "index.js",
+  "scripts": {
+    "run": "node index.js"
+  },
+  "author": "Sergey 'SnakE' Gromov",
+  "license": "MIT",
+  "dependencies": {
+    "canvas": "^2.7.0"
+  }
+}

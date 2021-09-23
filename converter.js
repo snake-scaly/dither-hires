@@ -124,15 +124,17 @@ function matchSeptet(pixels, subLookup) {
 
 function convertLine(colors, lookup, pal) {
     let odd = false
-    const line = []
+    const lineColors = []
+    const lineBytes = []
     let prevByte = 0
     for (let pi = 0; pi < colors.length; pi += 7, odd = !odd) {
         const origColors = colors.slice(pi, pi + 7)
         let appleColors = matchSeptet(origColors, lookup[odd ? 1 : 0][prevByte >> 6]);
-        line.push(...appleColors.raw)
+        lineColors.push(...appleColors.raw)
+        lineBytes.push(appleColors.bits)
         prevByte = appleColors.bits
     }
-    return fill(line, pal)
+    return {colors: fill(lineColors, pal), bytes: lineBytes}
 }
 
 // Sum of multiple RGBA colors.
@@ -191,7 +193,8 @@ function diffuseError(errors) {
 // Returns a list of lines where each line is a list of [r, g, b, a] pixels.
 function convert(colors, width, height, pal) {
     const lookup = createLookupTable(pal)
-    const result = [];
+    const resultColors = [];
+    const resultBytes = [];
 
     let error = new Array(width)
     error.fill([0, 0, 0, 0])
@@ -200,12 +203,12 @@ function convert(colors, width, height, pal) {
         const offset = li * width
         const lineColors = colors.slice(offset, offset + width)
         const adjustedColors = lineSum(lineColors, error)
-        const convertedColors = convertLine(adjustedColors, lookup, pal)
-        result.push(convertedColors);
-        // error = lineDiff(adjustedColors, convertedColors)
+        const {colors: convertedColors, bytes: lineBytes} = convertLine(adjustedColors, lookup, pal)
+        resultColors.push(convertedColors);
+        resultBytes.push(lineBytes);
         error = diffuseError(lineDiff(adjustedColors, convertedColors))
     }
-    return result;
+    return {colors: resultColors, bytes: resultBytes};
 }
 
 module.exports = {convert}

@@ -27,12 +27,12 @@ The Tool
 
 The prototype is written in Node.js. The program takes two arguments, the source image name,
 and the output name. The source image can be in any mainstream image format but must be
-exactly 280x192 pixels in size. The output is always PNG.
+exactly 280x192 pixels in size. The output is two files: a PNG and a FIL.
 
 Example usage:
 
 ```shell
-node index.js in/1.png out/1.png
+node index.js in/1.png out/1
 ```
 
 Algorithm
@@ -71,9 +71,7 @@ The actual implementation has some optimizations. Mainly it builds a table of al
 color sequences beforehand to speed up color matching.
 
 The code related to the algorithm itself is in `converter.js`. `index.js` contains glue code to make
-converter work as a Node command-line tool.
-
-This program does not produce the actual HiRes memory image suitable for displaying on an actual
-Apple ][ or in an emulator. However this feature can be easily added.
+converter work as a Node command-line tool. It also performs conversion of the native pixel data
+from top-to-bottom line order into HiRes memory layout.
 
 [Floyd-Steinberg]: (https://en.wikipedia.org/wiki/Floyd%E2%80%93Steinberg_dithering)

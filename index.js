@@ -6,18 +6,27 @@ const fs = require('fs')
 const fsp = fs.promises
 const converter = require('./converter')
 
+// Name "APPLE" and some metadata.
+const filHeader = [
+    0xc1, 0xd0, 0xd0, 0xcc, 0xc5, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0,
+    0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0xa0, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x84, 0x00, 0x20, 0xff, 0x1f
+]
+
 function pipeAsync(readable, writable) {
     readable.pipe(writable)
     return new Promise((resolve, reject) => {
         readable.on('error', e => {
+            console.error(e)
             reject(e)
             writable.end()
         })
         writable.on('error', e => {
+            console.error(e)
             reject(e)
             readable.end()
         })
-        writable.on('end', () => {
+        readable.on('end', () => {
             resolve()
         })
     })
@@ -56,13 +65,40 @@ function bytesToColors(bytes) {
     return Array.from(gen(bytes))
 }
 
+// Arrange image lines according to Apple in-memory format and prepend the FIL header.
+function createAppleFil(bytes) {
+    const fil = new Uint8ClampedArray(0x2000 + filHeader.length)
+    fil.set(filHeader)
+    const imageData = fil.subarray(filHeader.length)
+
+    for (let rasterLine = 0; rasterLine < 8; rasterLine++) {
+        let rasterOffset = rasterLine * 128 * 8
+        for (let charLine = 0; charLine < 8; charLine++) {
+            let charOffset = rasterOffset + charLine * 128
+            for (let superblock = 0; superblock < 3; superblock++) {
+                let offset = charOffset + superblock * 40
+                let line_index = superblock * 64 + charLine * 8 + rasterLine
+                imageData.set(bytes[line_index], offset)
+            }
+        }
+    }
+
+    return fil
+}
+
 async function main() {
     const pal = await loadPaletteAsync('apple2.pal')
     const imgData = await loadImageDataAsync(process.argv[2])
-    const result = converter.convert(bytesToColors(imgData.data), imgData.width, imgData.height, pal);
-    const resultColors = new Uint8ClampedArray(result.flat().flat());
-    const resultData = new ImageData(resultColors, imgData.width, imgData.height)
-    await saveImageDataAsync(resultData, process.argv[3])
+
+    const {colors: resultColors, bytes: resultBytes} =
+        converter.convert(bytesToColors(imgData.data), imgData.width, imgData.height, pal);
+
+    const colorArray = new Uint8ClampedArray(resultColors.flat().flat());
+    const colorData = new ImageData(colorArray, imgData.width, imgData.height)
+    await saveImageDataAsync(colorData, `${process.argv[3]}.png`)
+
+    const filData = createAppleFil(resultBytes)
+    await fsp.writeFile(`${process.argv[3]}.fil`, filData)
 }
 
 main()
